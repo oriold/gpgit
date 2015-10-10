@@ -5,6 +5,9 @@
 # Aug 4, 2012
 #
 # Change log:
+#     Oct 10, 2015 (Michael F. Herbst)
+#               - Remove obsolete -p from mktemp
+#
 #     Aug 4, 2012 (Etienne Perot)
 #               - Remove third argument
 #               - Changed default encryption mode to PGP/MIME (gpgit default)
@@ -60,8 +63,8 @@ find "$1" -type f -name '*.tmp_you_can_delete_me.*' -delete
 echo "Calling \`find \"$1\" -type f -regex '.*/\(cur\|new\)/.*' $3\`"
 while IFS= read -d $'\0' -r mail; do
 	# Create file unreadable except by ourselves
-	tempmsg="$(mktemp -p "$mail.tmp_you_can_delete_me.XXXXXXXXXXX")"
-	chmod 600 "$tempmsg"
+	tempmsg="$(mktemp "$mail.tmp_you_can_delete_me.XXXXXXXXXXX")"
+	chmod 600 "$tempmsg" # mktemp should have created the file as 600 already
 
 	# This is where the magic happens
 	"$gpgit" "$2" < "$mail" >> "$tempmsg"
