@@ -7,6 +7,7 @@
 # Change log:
 #     Oct 10, 2015 (Michael F. Herbst)
 #               - Remove obsolete -p from mktemp
+#               - Change output.
 #
 #     Aug 4, 2012 (Etienne Perot)
 #               - Remove third argument
@@ -61,12 +62,17 @@ find "$1" -type f -name '*.tmp_you_can_delete_me.*' -delete
 
 # Find all files in the Maildir specified.
 echo "Calling \`find \"$1\" -type f -regex '.*/\(cur\|new\)/.*' $3\`"
+echo
 while IFS= read -d $'\0' -r mail; do
+	# Echo what we do
+	echo "Processing '$mail'"
+
 	# Create file unreadable except by ourselves
 	tempmsg="$(mktemp "$mail.tmp_you_can_delete_me.XXXXXXXXXXX")"
 	chmod 600 "$tempmsg" # mktemp should have created the file as 600 already
 
 	# This is where the magic happens
+	echo "    --gpgit--> '$tempmsg'"
 	"$gpgit" "$2" < "$mail" >> "$tempmsg"
 
 	# Check to see if there are differences between the existing Maildir file and what was created by gpit.pl
@@ -82,17 +88,18 @@ while IFS= read -d $'\0' -r mail; do
 
 		# Strip message sizes, retain experimental flags and status flags, and copy the file over.
 		strip_size=$(echo "$mail" | sed -e 's/W=[[:digit:]]*//' -e 's/S=[[:digit:]]*//' -e 's/,,//' -e 's/,:2/:2/')
-		cp -av "$tempmsg" "$strip_size"
+		cp -av "$tempmsg" "$strip_size" | sed "s/^/    cp -v:     /"
 
 		# Indexes must be rebuilt, we've modified Maildir.
 		rebuild_index=1
 	else
-		echo "Not copying, no differences between '$tempmsg' and '$mail'"
+		echo "    nodiff:     Not copying, no differences between original '$mail' and encrypted '$tempmsg'."
 	fi
 
 	# Remove the temporary file
 	rm "$tempmsg"
 done < <(find "$1" -type f -regex '.*/\(cur\|new\)/.*' $3 -print0)
+echo
 
 # Remove Dovecot index and uids for regeneration.
 if [ "$rebuild_index" -eq 1 ]; then
