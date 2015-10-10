@@ -78,6 +78,7 @@ while IFS= read -d $'\0' -r mail; do
 	echo "    --gpgit--> '$tempmsg'"
 	if ! "$gpgit" "$2" < "$mail" >> "$tempmsg"; then
 		echo "    Error:     Gpgit failed. Skipping ..." >&2
+		rm "$tempmsg"
 		continue
 	fi
 
