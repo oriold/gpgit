@@ -62,18 +62,24 @@ find "$1" -type f -name '*.tmp_you_can_delete_me.*' -delete
 
 # Find all files in the Maildir specified.
 echo "Calling \`find \"$1\" -type f -regex '.*/\(cur\|new\)/.*' $3\`"
-echo
 while IFS= read -d $'\0' -r mail; do
 	# Echo what we do
+	echo
 	echo "Processing '$mail'"
 
 	# Create file unreadable except by ourselves
-	tempmsg="$(mktemp "$mail.tmp_you_can_delete_me.XXXXXXXXXXX")"
+	if ! tempmsg="$(mktemp "$mail.tmp_you_can_delete_me.XXXXXXXXXXX")"; then
+		echo "    Error:     Creating temporary file failed. Skipping ..." >&2
+		continue
+	fi
 	chmod 600 "$tempmsg" # mktemp should have created the file as 600 already
 
 	# This is where the magic happens
 	echo "    --gpgit--> '$tempmsg'"
-	"$gpgit" "$2" < "$mail" >> "$tempmsg"
+	if ! "$gpgit" "$2" < "$mail" >> "$tempmsg"; then
+		echo "    Error:     Gpgit failed. Skipping ..." >&2
+		continue
+	fi
 
 	# Check to see if there are differences between the existing Maildir file and what was created by gpit.pl
 	diff -qa "$mail" "$tempmsg" > /dev/null 2>&1;
