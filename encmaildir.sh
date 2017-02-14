@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # GPLv2
 # GPG Encrypt a Maildir using gpgit.pl, removing any S= or W= virtual flags.
@@ -49,7 +49,7 @@ if [ ! -d "$1" ]; then
 fi
 
 # Does this key exist?
-gpg --list-keys "$2" > /dev/null 2>&1
+gpg2 --list-keys "$2" > /dev/null 2>&1
 if [ $? -gt 0 ]; then
 	echo "A GPG key for '$2' could not be found!"
 	exit 0
@@ -58,10 +58,10 @@ fi
 rebuild_index=0
 
 # Cleanup leftover temporary files, if any.
-find "$1" -type f -name '*.tmp_you_can_delete_me.*' -delete
+gfind "$1" -type f -name '*.tmp_you_can_delete_me.*' -delete
 
 # Find all files in the Maildir specified.
-echo "Calling \`find \"$1\" -type f -regex '.*/\(cur\|new\)/.*' $3\`"
+echo "Calling \`gfind \"$1\" -type f -regex '.*/\(cur\|new\)/.*' $3\`"
 while IFS= read -d $'\0' -r mail; do
 	# Echo what we do
 	echo
@@ -72,7 +72,7 @@ while IFS= read -d $'\0' -r mail; do
 		echo "    Error:     Creating temporary file failed. Skipping ..." >&2
 		continue
 	fi
-	chmod 600 "$tempmsg" # mktemp should have created the file as 600 already
+	gchmod 600 "$tempmsg" # mktemp should have created the file as 600 already
 
 	# This is where the magic happens
 	echo "    --gpgit--> '$tempmsg'"
@@ -86,16 +86,16 @@ while IFS= read -d $'\0' -r mail; do
 	diff -qa "$mail" "$tempmsg" > /dev/null 2>&1;
 	if [ "$?" -gt 0 ]; then
 		# Preserve timestamps, set ownership.
-		chmod "$tempmsg" --reference="$mail"
-		touch "$tempmsg" --reference="$mail"
-		chown "$tempmsg" --reference="$mail"
+		gchmod "$tempmsg" --reference="$mail"
+		gtouch "$tempmsg" --reference="$mail"
+		gchown "$tempmsg" --reference="$mail"
 
 		# Remove the original Maildir message
 		rm "$mail"
 
 		# Strip message sizes, retain experimental flags and status flags, and copy the file over.
 		strip_size=$(echo "$mail" | sed -e 's/W=[[:digit:]]*//' -e 's/S=[[:digit:]]*//' -e 's/,,//' -e 's/,:2/:2/')
-		cp -av "$tempmsg" "$strip_size" | sed "s/^/    cp -v:     /"
+		gcp -av "$tempmsg" "$strip_size" | sed "s/^/    cp -v:     /"
 
 		# Indexes must be rebuilt, we've modified Maildir.
 		rebuild_index=1
@@ -105,13 +105,13 @@ while IFS= read -d $'\0' -r mail; do
 
 	# Remove the temporary file
 	rm "$tempmsg"
-done < <(find "$1" -type f -regex '.*/\(cur\|new\)/.*' $3 -print0)
+done < <(gfind "$1" -type f -regex '.*/\(cur\|new\)/.*' $3 -print0)
 echo
 
 # Remove Dovecot index and uids for regeneration.
 if [ "$rebuild_index" -eq 1 ]; then
 	echo "Removing Dovecot indexes and uids"
-	find "$1" -type f -regex '.*\(dovecot-\|dovecot\.\|\.uidvalidity\).*' -delete
+	gfind "$1" -type f -regex '.*\(dovecot-\|dovecot\.\|\.uidvalidity\).*' -delete
 else
 	echo "No messages found needing GPG encryption, not removing Dovecot indexes and UIDs."
 fi
